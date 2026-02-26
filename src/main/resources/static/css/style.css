@@ -1,0 +1,282 @@
+/* ===== リセット・ベース ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* ===== レイアウト ===== */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    padding: 30px;
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* ===== 追加フォーム ===== */
+.add-form {
+    background: #f8f8f8;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.add-form input,
+.add-form textarea {
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 15px;
+    font-family: inherit;
+}
+
+.add-form input:focus,
+.add-form textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.add-form textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.add-form-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.add-form-row label {
+    font-size: 14px;
+    color: #555;
+    white-space: nowrap;
+}
+
+.add-form-row input[type="date"] {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 15px;
+}
+
+/* ===== ボタン共通 ===== */
+button {
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #5568d3;
+}
+
+.btn-add {
+    align-self: flex-end;
+}
+
+.btn-delete {
+    background: #e74c3c;
+    padding: 7px 14px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+}
+
+.btn-save {
+    background: #27ae60;
+}
+
+.btn-save:hover {
+    background: #219653;
+}
+
+.btn-cancel {
+    background: #95a5a6;
+}
+
+.btn-cancel:hover {
+    background: #7f8c8d;
+}
+
+/* ===== フィルターボタン ===== */
+.filter-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.filter-buttons button {
+    flex: 1;
+    background: #f0f0f0;
+    color: #333;
+}
+
+.filter-buttons button.active {
+    background: #667eea;
+    color: white;
+}
+
+/* ===== ToDoアイテム ===== */
+#todoList {
+    list-style: none;
+}
+
+.todo-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.todo-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 期限による左ボーダーの色 */
+.todo-item.overdue   { border-left: 4px solid #e74c3c; }
+.todo-item.due-today { border-left: 4px solid #e67e22; }
+.todo-item.due-soon  { border-left: 4px solid #f1c40f; }
+
+/* ===== 表示行 ===== */
+.todo-view {
+    display: flex;
+    align-items: center;
+    padding: 14px;
+    cursor: pointer;
+}
+
+.todo-view input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.todo-content {
+    flex: 1;
+}
+
+.todo-title {
+    font-size: 16px;
+    color: #333;
+}
+
+.todo-item.completed .todo-title {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.todo-description {
+    font-size: 13px;
+    color: #666;
+    margin-top: 3px;
+}
+
+.todo-meta {
+    font-size: 12px;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+.meta-overdue { color: #e74c3c; }
+.meta-today   { color: #e67e22; }
+.meta-soon    { color: #d4a017; }
+.meta-normal  { color: #888; }
+
+/* ===== 編集フォーム ===== */
+.todo-edit {
+    display: none; /* デフォルト非表示 */
+    padding: 14px;
+    background: #fff8e1;
+    border-top: 1px solid #ddd;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* editing クラスが付いたとき編集フォームを表示 */
+.todo-item.editing .todo-edit {
+    display: flex;
+}
+
+/* 編集中は表示行のカーソルを通常に */
+.todo-item.editing .todo-view {
+    cursor: default;
+    background: #f0f0f0;
+}
+
+.todo-edit input,
+.todo-edit textarea {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.todo-edit textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.edit-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.edit-row label {
+    font-size: 13px;
+    color: #555;
+    white-space: nowrap;
+}
+
+.edit-row input[type="date"] {
+    padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ===== 空状態 ===== */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}

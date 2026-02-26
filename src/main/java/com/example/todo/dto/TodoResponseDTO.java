@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -15,6 +16,7 @@ public class TodoResponseDTO {
     private String title;
     private String description;
     private boolean completed;
+    private LocalDate dueDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -25,6 +27,7 @@ public class TodoResponseDTO {
                 todo.getTitle(),
                 todo.getDescription(),
                 todo.isCompleted(),
+                todo.getDueDate(),
                 todo.getCreatedAt(),
                 todo.getUpdatedAt()
         );

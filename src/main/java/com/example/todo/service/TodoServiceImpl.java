@@ -39,6 +39,7 @@ public class TodoServiceImpl implements TodoService {
         todo.setTitle(requestDTO.getTitle());
         todo.setDescription(requestDTO.getDescription());
         todo.setCompleted(requestDTO.getCompleted() != null ? requestDTO.getCompleted() : false);
+        todo.setDueDate(requestDTO.getDueDate());
 
         Todo savedTodo = todoRepository.save(todo);
         return TodoResponseDTO.fromEntity(savedTodo);
@@ -52,6 +53,7 @@ public class TodoServiceImpl implements TodoService {
         todo.setTitle(requestDTO.getTitle());
         todo.setDescription(requestDTO.getDescription());
         todo.setCompleted(requestDTO.getCompleted());
+        todo.setDueDate(requestDTO.getDueDate());
 
         Todo updatedTodo = todoRepository.save(todo);
         return TodoResponseDTO.fromEntity(updatedTodo);

@@ -4,33 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ToDoリスト</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="container">
-    <h1>ToDoリスト</h1>
+    <h1>📝 ToDoリスト</h1>
 
-    <div class="input-section">
-        <input
-                type="text"
-                id="todoInput"
-                placeholder="新しいToDoを入力..."
-        >
-        <button onclick="addTodo()">追加</button>
+    <!-- 追加フォーム -->
+    <div class="add-form">
+        <input type="text" id="addTitle" placeholder="タイトル（必須）">
+        <textarea id="addDescription" placeholder="詳細説明（任意）"></textarea>
+        <div class="add-form-row">
+            <label for="addDueDate">期限日：</label>
+            <input type="date" id="addDueDate">
+        </div>
+        <button class="btn-add" id="btnAdd">＋ 追加</button>
     </div>
 
+    <!-- フィルター（data-filter属性でJSから識別） -->
     <div class="filter-buttons">
-        <button class="active" onclick="filterTodos('all')">すべて</button>
-        <button onclick="filterTodos('active')">未完了</button>
-        <button onclick="filterTodos('completed')">完了済み</button>
+        <button class="active" data-filter="all">すべて</button>
+        <button data-filter="active">未完了</button>
+        <button data-filter="completed">完了済み</button>
     </div>
 
     <ul id="todoList"></ul>
-    <div id="emptyState" class="empty-state" style="display: none;">
-        ToDoがありません
-    </div>
+    <div id="emptyState" class="empty-state" style="display:none;">ToDoがありません</div>
 </div>
 
-<script src="app.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
