@@ -1,6 +1,7 @@
 package com.example.todo.repository;
 
 import com.example.todo.entity.Todo;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,4 +15,7 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     // タイトルで部分一致検索
     List<Todo> findByTitleContaining(String keyword);
+
+    // 検索 + ソート
+    List<Todo> findByTitleContaining(String keyword, Sort sort);
 }

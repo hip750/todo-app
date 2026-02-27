@@ -13,4 +13,9 @@ public interface TodoService {
     TodoResponseDTO updateTodo(Long id, TodoRequestDTO requestDTO);
     void deleteTodo(Long id);
     List<TodoResponseDTO> getTodosByCompleted(Boolean completed);
+
+    // タイトル検索
+    List<TodoResponseDTO> searchByTitle(String keyword);
+    // 作成日ソート
+    List<TodoResponseDTO> getAllTodosSorted(String sortDirection);
 }

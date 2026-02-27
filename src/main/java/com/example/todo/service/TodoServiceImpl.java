@@ -6,6 +6,7 @@ import com.example.todo.entity.Todo;
 import com.example.todo.repository.TodoRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +71,24 @@ public class TodoServiceImpl implements TodoService {
     @Override
     public List<TodoResponseDTO> getTodosByCompleted(Boolean completed) {
         return todoRepository.findByCompleted(completed).stream()
+                .map(TodoResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TodoResponseDTO> searchByTitle(String keyword) {
+        return todoRepository.findByTitleContaining(keyword).stream()
+                .map(TodoResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TodoResponseDTO> getAllTodosSorted(String sortDirection) {
+        Sort sort = sortDirection.equalsIgnoreCase("asc")
+                ? Sort.by(Sort.Direction.ASC, "createAt")
+                : Sort.by(Sort.Direction.DESC, "createAt");
+
+        return todoRepository.findAll(sort).stream()
                 .map(TodoResponseDTO::fromEntity)
                 .collect(Collectors.toList());
     }

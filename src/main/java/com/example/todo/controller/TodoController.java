@@ -62,4 +62,20 @@ public class TodoController {
         List<TodoResponseDTO> todos = todoService.getTodosByCompleted(completed);
         return ResponseEntity.ok(todos);
     }
+
+    // タイトル検索
+    @GetMapping("/search")
+    public ResponseEntity<List<TodoResponseDTO>> searchByTitle(
+            @RequestParam String keyword) {
+        List<TodoResponseDTO> todos = todoService.searchByTitle(keyword);
+        return ResponseEntity.ok(todos);
+    }
+
+    // 作成日ソート
+    @GetMapping("/sorted")
+    public ResponseEntity<List<TodoResponseDTO>> getSortedTodos(
+            @RequestParam(defaultValue = "desc") String sortDirection) {
+        List<TodoResponseDTO> todos = todoService.getAllTodosSorted(sortDirection);
+        return ResponseEntity.ok(todos);
+    }
 }
