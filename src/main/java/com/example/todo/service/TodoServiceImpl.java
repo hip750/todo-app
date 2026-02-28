@@ -85,8 +85,8 @@ public class TodoServiceImpl implements TodoService {
     @Override
     public List<TodoResponseDTO> getAllTodosSorted(String sortDirection) {
         Sort sort = sortDirection.equalsIgnoreCase("asc")
-                ? Sort.by(Sort.Direction.ASC, "createAt")
-                : Sort.by(Sort.Direction.DESC, "createAt");
+                ? Sort.by(Sort.Direction.ASC, "createdAt")
+                : Sort.by(Sort.Direction.DESC, "createdAt");
 
         return todoRepository.findAll(sort).stream()
                 .map(TodoResponseDTO::fromEntity)

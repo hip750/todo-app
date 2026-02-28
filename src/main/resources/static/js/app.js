@@ -1,255 +1,377 @@
+// =============================================================
+// 定数・状態管理
+// =============================================================
 const API_URL = 'http://localhost:8080/api/todos';
 
-let currentFilter = 'all';
-let allTodos = []; // 取得データのキャッシュ
+// UI状態をオブジェクトで管理
+const state = {
+    filter:  'all',   // 'all' | 'active' | 'completed'
+    sort:    'desc',  // 'desc'（新しい順） | 'asc'（古い順）
+    keyword: '',      // 検索キーワード
+};
 
-// ===== 初期化 =====
-window.addEventListener('load', () => {
+// =============================================================
+// 初期化
+// =============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    setupEventListeners();
     loadTodos();
-    registerStaticListeners();
 });
 
-// ===== 静的要素へのイベント登録 =====
-// HTMLが確定している要素は直接 addEventListener で登録する
-function registerStaticListeners() {
-    // 追加ボタン
-    document.getElementById('btnAdd').addEventListener('click', addTodo);
-
-    // タイトル入力欄でEnterキーを押したときも追加
+function setupEventListeners() {
+    // 追加フォーム
+    document.getElementById('btnAdd').addEventListener('click', handleAddTodo);
     document.getElementById('addTitle').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.isComposing) addTodo();
+        if (e.key === 'Enter') handleAddTodo();
     });
 
-    // フィルターボタン（親要素へのイベント委譲）
-    // data-filter属性でどのボタンか識別する
-    document.querySelector('.filter-buttons').addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-filter]');
-        if (!btn) return;
-        filterTodos(btn, btn.dataset.filter);
+    // 検索バー
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        state.keyword = e.target.value.trim();
+        // クリアボタンの表示切り替え
+        document.getElementById('btnClearSearch')
+            .classList.toggle('visible', state.keyword.length > 0);
+        loadTodos();
     });
 
-    // ToDoリストへのイベント委譲
-    // 動的に生成される要素はDOMに存在しないため直接登録できない
-    // 親要素（#todoList）に登録し、クリック対象をdata-action属性で振り分ける
-    document.getElementById('todoList').addEventListener('click', onTodoListClick);
-    document.getElementById('todoList').addEventListener('change', onTodoListChange);
+    document.getElementById('btnClearSearch').addEventListener('click', () => {
+        state.keyword = '';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('btnClearSearch').classList.remove('visible');
+        loadTodos();
+    });
+
+    // フィルターボタン
+    document.querySelectorAll('.filter-buttons button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            state.filter = btn.dataset.filter;
+            setActiveButton('.filter-buttons button', btn);
+            loadTodos();
+        });
+    });
+
+    // ソートボタン
+    document.querySelectorAll('.sort-buttons button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            state.sort = btn.dataset.sort;
+            setActiveButton('.sort-buttons button', btn);
+            loadTodos();
+        });
+    });
 }
 
-// ===== ToDoリストのクリックをまとめて処理（イベント委譲） =====
-function onTodoListClick(e) {
-    // クリックされた要素から一番近い .todo-item を探してidを取得
-    const item = e.target.closest('.todo-item');
-    if (!item) return;
-    const id = Number(item.dataset.id);
+// =============================================================
+// API 呼び出し
+// =============================================================
 
-    // 削除ボタン
-    if (e.target.closest('[data-action="delete"]')) {
-        deleteTodo(id);
-        return;
-    }
-
-    // キャンセルボタン
-    if (e.target.closest('[data-action="cancel"]')) {
-        renderTodos(); // 入力値を元に戻すため再描画
-        return;
-    }
-
-    // 保存ボタン
-    if (e.target.closest('[data-action="save"]')) {
-        const completed = item.querySelector('[data-action="toggle"]').checked;
-        saveEdit(id, completed);
-        return;
-    }
-
-    // チェックボックスのクリックは change イベントで処理するためここでは無視
-    if (e.target.closest('[data-action="toggle"]')) return;
-
-    // 上記以外のtodo-view内クリック → 編集開始
-    if (e.target.closest('.todo-view')) {
-        openEdit(item);
-    }
-}
-
-// ===== チェックボックスのchange（クリックとは別で拾う） =====
-function onTodoListChange(e) {
-    if (e.target.dataset.action !== 'toggle') return;
-    const item = e.target.closest('.todo-item');
-    const id   = Number(item.dataset.id);
-    toggleTodo(id, e.target.checked);
-}
-
-// ===== データ取得 =====
+/**
+ * state に応じたURLでToDoを取得して描画する
+ */
 async function loadTodos() {
     try {
-        const res = await fetch(API_URL);
-        allTodos  = await res.json();
-        renderTodos();
+        const url = buildApiUrl();
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        let todos = await res.json();
+
+        // キーワード検索時はサーバーがソートを保証しないので
+        // クライアント側でもソートをかける
+        if (state.keyword) {
+            todos = clientSort(todos);
+        }
+
+        renderTodos(todos);
     } catch (err) {
-        console.error(err);
-        alert('ToDoの読み込みに失敗しました');
+        console.error('取得失敗:', err);
+        showEmptyState('ToDoの読み込みに失敗しました。サーバーを確認してください。');
     }
 }
 
-// ===== 描画 =====
-function renderTodos() {
-    const list  = document.getElementById('todoList');
-    const empty = document.getElementById('emptyState');
+/**
+ * state からAPIのURLを組み立てる
+ *   - キーワードあり → 検索API  GET /api/todos/search?keyword=xxx
+ *   - キーワードなし → ソートAPI GET /api/todos/sorted?sortDirection=desc
+ */
+function buildApiUrl() {
+    if (state.keyword) {
+        return `${API_URL}/search?keyword=${encodeURIComponent(state.keyword)}`;
+    }
+    return `${API_URL}/sorted?sortDirection=${state.sort}`;
+}
 
-    let todos = allTodos;
-    if (currentFilter === 'active')    todos = todos.filter(t => !t.completed);
-    if (currentFilter === 'completed') todos = todos.filter(t => t.completed);
+// =============================================================
+// CRUD 操作
+// =============================================================
 
-    if (todos.length === 0) {
-        list.style.display  = 'none';
-        empty.style.display = 'block';
+async function handleAddTodo() {
+    const title       = document.getElementById('addTitle').value.trim();
+    const description = document.getElementById('addDescription').value.trim();
+    const dueDate     = document.getElementById('addDueDate').value || null;
+
+    if (!title) {
+        alert('タイトルを入力してください');
+        document.getElementById('addTitle').focus();
         return;
     }
 
-    list.style.display  = 'block';
-    empty.style.display = 'none';
+    try {
+        const res = await fetch(API_URL, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ title, description, dueDate, completed: false }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    list.innerHTML = todos.map(buildTodoItemHtml).join('');
+        // フォームをリセット
+        document.getElementById('addTitle').value       = '';
+        document.getElementById('addDescription').value = '';
+        document.getElementById('addDueDate').value     = '';
+
+        loadTodos();
+    } catch (err) {
+        console.error('追加失敗:', err);
+        alert('ToDoの追加に失敗しました');
+    }
 }
 
-function buildTodoItemHtml(todo) {
-    const due = getDueInfo(todo.dueDate);
+/**
+ * チェックボックスの変更：completed だけ反転させて PUT する
+ * 編集フォームが開いている場合は何もしない（意図しない切り替えを防ぐ）
+ */
+async function handleToggle(id) {
+    try {
+        const getRes = await fetch(`${API_URL}/${id}`);
+        if (!getRes.ok) throw new Error(`HTTP ${getRes.status}`);
+        const todo = await getRes.json();
+
+        // 編集中アイテムはトグルしない
+        const li = document.querySelector(`.todo-item[data-id="${id}"]`);
+        if (li && li.classList.contains('editing')) return;
+
+        const putRes = await fetch(`${API_URL}/${id}`, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                title:       todo.title,
+                description: todo.description,
+                dueDate:     todo.dueDate ?? null,
+                completed:   !todo.completed,
+            }),
+        });
+        if (!putRes.ok) throw new Error(`HTTP ${putRes.status}`);
+        loadTodos();
+    } catch (err) {
+        console.error('更新失敗:', err);
+        alert('ToDoの更新に失敗しました');
+    }
+}
+
+/**
+ * 編集フォームの保存ボタン：タイトル・説明・期限日を PUT する
+ */
+async function handleSave(id) {
+    const li    = document.querySelector(`.todo-item[data-id="${id}"]`);
+    const title = li.querySelector('.edit-title').value.trim();
+    if (!title) { alert('タイトルを入力してください'); return; }
+
+    const description = li.querySelector('.edit-description').value.trim();
+    const dueDate     = li.querySelector('.edit-due').value || null;
+    // 現在の completed 値は data 属性から読む
+    const completed   = li.dataset.completed === 'true';
+
+    try {
+        const res = await fetch(`${API_URL}/${id}`, {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ title, description, dueDate, completed }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        loadTodos();
+    } catch (err) {
+        console.error('保存失敗:', err);
+        alert('ToDoの保存に失敗しました');
+    }
+}
+
+async function handleDelete(id) {
+    if (!confirm('このToDoを削除しますか？')) return;
+    try {
+        const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        loadTodos();
+    } catch (err) {
+        console.error('削除失敗:', err);
+        alert('ToDoの削除に失敗しました');
+    }
+}
+
+// =============================================================
+// 描画
+// =============================================================
+
+function renderTodos(todos) {
+    // completed / active フィルタをクライアント側で適用
+    const filtered = clientFilter(todos);
+
+    if (filtered.length === 0) {
+        document.getElementById('todoList').innerHTML = '';
+        showEmptyState('ToDoがありません');
+        return;
+    }
+
+    hideEmptyState();
+    document.getElementById('todoList').innerHTML = filtered.map(buildTodoHtml).join('');
+
+    // ── イベント登録（描画後に一括で行う） ──────────
+    document.querySelectorAll('.todo-item').forEach((li) => {
+        const id = Number(li.dataset.id);
+
+        // チェックボックス → 完了トグル
+        li.querySelector('input[type="checkbox"]')
+            .addEventListener('change', () => handleToggle(id));
+
+        // .todo-view クリック → 編集フォーム開閉
+        // ただしチェックボックスや削除ボタンのクリックは除外
+        li.querySelector('.todo-view').addEventListener('click', (e) => {
+            if (e.target.type === 'checkbox') return;
+            if (e.target.classList.contains('btn-delete')) return;
+            toggleEditForm(li);
+        });
+
+        // 削除ボタン
+        li.querySelector('.btn-delete')
+            .addEventListener('click', () => handleDelete(id));
+
+        // 保存ボタン
+        li.querySelector('.btn-save')
+            .addEventListener('click', () => handleSave(id));
+
+        // キャンセルボタン
+        li.querySelector('.btn-cancel')
+            .addEventListener('click', () => li.classList.remove('editing'));
+    });
+}
+
+/**
+ * 編集フォームの開閉（他のアイテムが開いていれば閉じる）
+ */
+function toggleEditForm(targetLi) {
+    const isEditing = targetLi.classList.contains('editing');
+
+    // 全アイテムの編集フォームを閉じる
+    document.querySelectorAll('.todo-item.editing')
+        .forEach((li) => li.classList.remove('editing'));
+
+    // 対象が閉じていたなら開く
+    if (!isEditing) {
+        targetLi.classList.add('editing');
+    }
+}
+
+// =============================================================
+// HTML テンプレート
+// =============================================================
+
+function buildTodoHtml(todo) {
+    const { dueCls, metaCls, metaTxt } = buildDueMeta(todo.dueDate, todo.completed);
 
     return `
-        <li class="todo-item ${todo.completed ? 'completed' : ''} ${due.cls}"
-            id="item-${todo.id}"
-            data-id="${todo.id}">
+    <li class="todo-item ${todo.completed ? 'completed' : ''} ${dueCls}"
+        data-id="${todo.id}"
+        data-completed="${todo.completed}">
 
-            <!-- 表示行 -->
-            <div class="todo-view">
-                <input type="checkbox"
-                       data-action="toggle"
-                       ${todo.completed ? 'checked' : ''}>
-                <div class="todo-content">
-                    <div class="todo-title">${esc(todo.title)}</div>
-                    ${todo.description
-                        ? `<div class="todo-description">${esc(todo.description)}</div>`
-                        : ''}
-                    ${due.label
-                        ? `<div class="todo-meta ${due.metaCls}">${due.label}</div>`
-                        : ''}
-                </div>
-                <button class="btn-delete" data-action="delete">削除</button>
+        <!-- 表示行（クリックで編集フォームを開閉） -->
+        <div class="todo-view">
+            <input type="checkbox" ${todo.completed ? 'checked' : ''}>
+            <div class="todo-content">
+                <div class="todo-title">${escapeHtml(todo.title)}</div>
+                ${todo.description
+                    ? `<div class="todo-description">${escapeHtml(todo.description)}</div>`
+                    : ''}
+                ${metaTxt
+                    ? `<div class="todo-meta ${metaCls}">${metaTxt}</div>`
+                    : ''}
             </div>
+            <button class="btn-delete">削除</button>
+        </div>
 
-            <!-- 編集フォーム（.editing クラスで表示） -->
-            <div class="todo-edit">
-                <input type="text"
-                       id="edit-title-${todo.id}"
-                       value="${esc(todo.title)}"
-                       placeholder="タイトル">
-                <textarea id="edit-desc-${todo.id}"
-                          placeholder="詳細説明">${esc(todo.description || '')}</textarea>
-                <div class="edit-row">
-                    <label for="edit-due-${todo.id}">期限日：</label>
-                    <input type="date"
-                           id="edit-due-${todo.id}"
-                           value="${todo.dueDate || ''}">
-                </div>
-                <div class="edit-actions">
-                    <button class="btn-cancel" data-action="cancel">キャンセル</button>
-                    <button class="btn-save"   data-action="save">保存</button>
-                </div>
+        <!-- 編集フォーム（.editing クラスがついたとき表示） -->
+        <div class="todo-edit">
+            <input class="edit-title" type="text" value="${escapeHtml(todo.title)}">
+            <textarea class="edit-description">${escapeHtml(todo.description ?? '')}</textarea>
+            <div class="edit-row">
+                <label>期限日：</label>
+                <input class="edit-due" type="date" value="${todo.dueDate ?? ''}">
             </div>
-        </li>`;
+            <div class="edit-actions">
+                <button class="btn-cancel">キャンセル</button>
+                <button class="btn-save">保存</button>
+            </div>
+        </div>
+    </li>`;
 }
 
-// ===== 期限日の判定 =====
-function getDueInfo(dueDate) {
-    if (!dueDate) return { cls: '', metaCls: '', label: '' };
+/**
+ * 期限日に応じたCSSクラスと表示テキストを返す
+ */
+function buildDueMeta(dueDate, completed) {
+    if (!dueDate || completed) {
+        return { dueCls: '', metaCls: 'meta-normal', metaTxt: dueDate ? `期限：${dueDate}` : '' };
+    }
 
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const due   = new Date(dueDate); due.setHours(0, 0, 0, 0);
-    const diff  = Math.round((due - today) / 86400000);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due   = new Date(dueDate);
+    const diffDays = Math.ceil((due - today) / 86400000);
 
-    if (diff < 0)   return { cls: 'overdue',   metaCls: 'meta-overdue', label: `⚠️ 期限切れ（${dueDate}）` };
-    if (diff === 0) return { cls: 'due-today', metaCls: 'meta-today',   label: `🔥 今日が期限！` };
-    if (diff <= 3)  return { cls: 'due-soon',  metaCls: 'meta-soon',    label: `⏰ 期限まであと${diff}日（${dueDate}）` };
-    return { cls: '', metaCls: 'meta-normal', label: `📅 期限：${dueDate}` };
+    if (diffDays < 0)  return { dueCls: 'overdue',   metaCls: 'meta-overdue', metaTxt: `⚠ 期限切れ（${dueDate}）` };
+    if (diffDays === 0) return { dueCls: 'due-today', metaCls: 'meta-today',   metaTxt: `🔥 今日が期限（${dueDate}）` };
+    if (diffDays <= 3)  return { dueCls: 'due-soon',  metaCls: 'meta-soon',    metaTxt: `⚡ 期限まで${diffDays}日（${dueDate}）` };
+
+    return { dueCls: '', metaCls: 'meta-normal', metaTxt: `期限：${dueDate}` };
 }
 
-// ===== 編集の開始 =====
-function openEdit(item) {
-    if (item.classList.contains('editing')) return;
-    // 他に開いている編集フォームを閉じる
-    document.querySelectorAll('.todo-item.editing').forEach(el => el.classList.remove('editing'));
-    item.classList.add('editing');
+// =============================================================
+// クライアント側フィルタ・ソート
+// =============================================================
+
+function clientFilter(todos) {
+    if (state.filter === 'active')    return todos.filter((t) => !t.completed);
+    if (state.filter === 'completed') return todos.filter((t) => t.completed);
+    return todos;
 }
 
-// ===== フィルター =====
-function filterTodos(btn, filter) {
-    currentFilter = filter;
-    document.querySelectorAll('.filter-buttons button')
-        .forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderTodos(); // 再フェッチせずキャッシュから再描画
-}
-
-// ===== CRUD =====
-async function addTodo() {
-    const title = document.getElementById('addTitle').value.trim();
-    if (!title) { alert('タイトルを入力してください'); return; }
-
-    await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            title,
-            description: document.getElementById('addDescription').value.trim(),
-            completed: false,
-            dueDate: document.getElementById('addDueDate').value || null,
-        }),
+// 検索時にサーバーがソートを保証しないため、クライアント側でもソートする
+function clientSort(todos) {
+    return [...todos].sort((a, b) => {
+        const diff = new Date(a.createdAt) - new Date(b.createdAt);
+        return state.sort === 'asc' ? diff : -diff;
     });
-
-    document.getElementById('addTitle').value       = '';
-    document.getElementById('addDescription').value = '';
-    document.getElementById('addDueDate').value      = '';
-
-    loadTodos();
 }
 
-async function saveEdit(id, completed) {
-    const title = document.getElementById(`edit-title-${id}`).value.trim();
-    if (!title) { alert('タイトルを入力してください'); return; }
+// =============================================================
+// ユーティリティ
+// =============================================================
 
-    await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            title,
-            description: document.getElementById(`edit-desc-${id}`).value.trim(),
-            completed,
-            dueDate: document.getElementById(`edit-due-${id}`).value || null,
-        }),
-    });
-
-    loadTodos();
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-async function toggleTodo(id, completed) {
-    const todo = allTodos.find(t => t.id === id);
-    await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...todo, completed }),
-    });
-    loadTodos();
+function setActiveButton(selector, activeBtn) {
+    document.querySelectorAll(selector).forEach((b) => b.classList.remove('active'));
+    activeBtn.classList.add('active');
 }
 
-async function deleteTodo(id) {
-    if (!confirm('このToDoを削除しますか？')) return;
-    await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-    loadTodos();
+function showEmptyState(msg) {
+    document.getElementById('todoList').innerHTML = '';
+    const el = document.getElementById('emptyState');
+    el.textContent = msg;
+    el.style.display = 'block';
 }
 
-// ===== ユーティリティ =====
-function esc(text) {
-    if (!text) return '';
-    const d = document.createElement('div');
-    d.textContent = text;
-    return d.innerHTML;
+function hideEmptyState() {
+    document.getElementById('emptyState').style.display = 'none';
 }

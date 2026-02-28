@@ -126,22 +126,100 @@ button:hover {
     background: #7f8c8d;
 }
 
+/* ===== 検索バー ===== */
+.search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+#searchInput {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+#searchInput:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/* クリアボタン：非アクティブ時は薄く */
+.btn-clear-search {
+    padding: 10px 16px;
+    background: #e0e0e0;
+    color: #666;
+    font-size: 14px;
+    opacity: 0;               /* 初期は透明 */
+    pointer-events: none;     /* 初期はクリック不可 */
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.btn-clear-search.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-clear-search:hover {
+    background: #ccc;
+}
+
+/* ===== コントロール行（フィルター＋ソート） ===== */
+.controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
 /* ===== フィルターボタン ===== */
 .filter-buttons {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 8px;
 }
 
 .filter-buttons button {
-    flex: 1;
+    padding: 8px 18px;
     background: #f0f0f0;
     color: #333;
+    font-size: 14px;
 }
 
 .filter-buttons button.active {
     background: #667eea;
     color: white;
+}
+
+.filter-buttons button:hover:not(.active) {
+    background: #e0e0e0;
+}
+
+/* ===== ソートボタン ===== */
+.sort-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.sort-buttons button {
+    padding: 7px 14px;
+    background: #f0f0f0;
+    color: #555;
+    font-size: 13px;
+}
+
+.sort-buttons button.active {
+    background: #764ba2;
+    color: white;
+}
+
+.sort-buttons button:hover:not(.active) {
+    background: #e0e0e0;
 }
 
 /* ===== ToDoアイテム ===== */
@@ -181,6 +259,7 @@ button:hover {
     margin-right: 14px;
     cursor: pointer;
     flex-shrink: 0;
+    accent-color: #667eea;
 }
 
 .todo-content {
@@ -216,7 +295,7 @@ button:hover {
 
 /* ===== 編集フォーム ===== */
 .todo-edit {
-    display: none; /* デフォルト非表示 */
+    display: none;
     padding: 14px;
     background: #fff8e1;
     border-top: 1px solid #ddd;
@@ -224,12 +303,10 @@ button:hover {
     gap: 8px;
 }
 
-/* editing クラスが付いたとき編集フォームを表示 */
 .todo-item.editing .todo-edit {
     display: flex;
 }
 
-/* 編集中は表示行のカーソルを通常に */
 .todo-item.editing .todo-view {
     cursor: default;
     background: #f0f0f0;

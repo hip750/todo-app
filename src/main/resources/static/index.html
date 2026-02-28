@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>📝 ToDoリスト</h1>
+    <h1>ToDoリスト</h1>
 
     <!-- 追加フォーム -->
     <div class="add-form">
@@ -21,11 +21,25 @@
         <button class="btn-add" id="btnAdd">＋ 追加</button>
     </div>
 
-    <!-- フィルター（data-filter属性でJSから識別） -->
-    <div class="filter-buttons">
-        <button class="active" data-filter="all">すべて</button>
-        <button data-filter="active">未完了</button>
-        <button data-filter="completed">完了済み</button>
+    <!-- 検索バー -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="タイトルで検索...">
+        <button class="btn-clear-search" id="btnClearSearch">✕</button>
+    </div>
+
+    <!-- フィルター＋ソートを横並びに -->
+    <div class="controls-row">
+        <!-- フィルター（data-filter属性でJSから識別） -->
+        <div class="filter-buttons">
+            <button class="active" data-filter="all">すべて</button>
+            <button data-filter="active">未完了</button>
+            <button data-filter="completed">完了済み</button>
+        </div>
+        <!-- ソート（data-sort属性でJSから識別） -->
+        <div class="sort-buttons">
+            <button class="active" data-sort="desc">新しい順</button>
+            <button data-sort="asc">古い順</button>
+        </div>
     </div>
 
     <ul id="todoList"></ul>
